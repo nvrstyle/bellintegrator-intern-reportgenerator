@@ -33,20 +33,20 @@ public class ReportBuilder {
         dataSourceList = tsvParser.parse();
 
         int pageWidth = settings.getPage().getWidth();
+        int pageHeight = settings.getPage().getHeight();
         reportBody = new StringBuilder(pageWidth);
 
         generatePageHeader();
         for (DataSourceDto dataSourceListItem : dataSourceList) {
             generateLineBody(dataSourceListItem);
             countRows+= reportLineBody.toString().split("\n").length;
-            if (countRows % 12 == 0) {
+            if (countRows % pageHeight == 0) {
                 reportBody.append("~\n");
                 generatePageHeader();
             }
             reportBody.append(reportLineBody);
         }
 
-        //System.out.print(reportBody);
         return reportBody.toString();
     }
 
