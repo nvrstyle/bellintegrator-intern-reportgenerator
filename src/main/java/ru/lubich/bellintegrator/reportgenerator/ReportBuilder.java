@@ -6,7 +6,7 @@ import ru.lubich.bellintegrator.reportgenerator.util.TSVParser;
 import ru.lubich.bellintegrator.reportgenerator.util.XMLParser;
 
 import javax.xml.bind.JAXBException;
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ReportBuilder {
@@ -20,7 +20,9 @@ public class ReportBuilder {
     private XMLParser xmlParser;
     private StringBuilder reportHeader;
     private StringBuilder reportBody;
-    private StringBuilder reportLineBody;
+    private StringBuilder reportPageBody;
+    private List<String> reportPages;
+    private StringBuilder reportPageItemBody;
     private int countRows = 0;
 
     public ReportBuilder(XMLParser xmlParser, TSVParser tsvParser) {
@@ -35,18 +37,30 @@ public class ReportBuilder {
         int pageWidth = settings.getPage().getWidth();
         int pageHeight = settings.getPage().getHeight();
         reportBody = new StringBuilder(pageWidth);
-
-        generatePageHeader();
+        reportPageBody = new StringBuilder(pageWidth);
+        reportPages = new ArrayList<>();
+        // Generate report pages
         for (DataSourceDto dataSourceListItem : dataSourceList) {
-            generateLineBody(dataSourceListItem);
-            countRows+= reportLineBody.toString().split("\n").length;
-            if (countRows % pageHeight == 0) {
-                reportBody.append("~\n");
-                generatePageHeader();
+            generatePageItemBody(dataSourceListItem);
+            int currentPageItemLength = reportPageItemBody.toString().split("\n").length;
+            countRows += currentPageItemLength;
+            if (countRows >= pageHeight) {
+                countRows = currentPageItemLength;
+                reportPages.add(reportPageBody.toString());
+                reportPageBody = new StringBuilder(pageWidth);
             }
-            reportBody.append(reportLineBody);
+            reportPageBody.append(reportPageItemBody);
         }
-
+        //Added last page in list of pages
+        reportPages.add(reportPageBody.toString());
+        //Generate complete report
+        int reportPageSize = reportPages.size();
+        for (int i = 0; i < reportPageSize; i++) {
+            if (i != 0)
+                reportBody.append("~\n");
+            generatePageHeader();
+            reportBody.append(reportPages.get(i));
+        }
         return reportBody.toString();
     }
 
@@ -66,21 +80,19 @@ public class ReportBuilder {
         reportBody.append(reportHeader);
         reportBody.append("\n");
     }
-
-
     //Generate one line of report body
-    private void generateLineBody(DataSourceDto dataSourceListItem) {
+    private void generatePageItemBody(DataSourceDto dataSourceListItem) {
 
         int pageWidth = settings.getPage().getWidth();
-        reportLineBody = new StringBuilder(pageWidth);
+        reportPageItemBody = new StringBuilder(pageWidth);
         String numDataTmp;
         String dateDataTmp;
         String fullNameDataTmp;
 
         for (int i = 0; i < pageWidth; i++) {
-            reportLineBody.append(LINE_SEPARATOR);
+            reportPageItemBody.append(LINE_SEPARATOR);
         }
-        reportLineBody.append("\n");
+        reportPageItemBody.append("\n");
         int numberColumnWidth = settings.getColumns().get(0).getWidth();
         int dateColumnWidth = settings.getColumns().get(1).getWidth();
         int fullNameColumnWidth = settings.getColumns().get(2).getWidth();
@@ -94,10 +106,10 @@ public class ReportBuilder {
                 numDataTmp = dataSourceListItem.getNumber().substring(0, numberColumnWidth);
                 numDataTmp = String.format(" %-" + settings.getColumns().get(0).getWidth() + "s ", numDataTmp);
                 dataSourceListItem.setNumber(dataSourceListItem.getNumber().substring(numberColumnWidth));
-                reportLineBody.append(COLUMN_SEPARATOR + numDataTmp);
+                reportPageItemBody.append(COLUMN_SEPARATOR + numDataTmp);
             } else {
                 numDataTmp = String.format(" %-" + settings.getColumns().get(0).getWidth() + "s ", dataSourceListItem.getNumber());
-                reportLineBody.append(COLUMN_SEPARATOR + numDataTmp);
+                reportPageItemBody.append(COLUMN_SEPARATOR + numDataTmp);
                 dataSourceListItem.setNumber("");
             }
             //Processing Date column
@@ -105,10 +117,10 @@ public class ReportBuilder {
                 dateDataTmp = dataSourceListItem.getDate().substring(0, dateColumnWidth);
                 dateDataTmp = String.format(" %-" + settings.getColumns().get(1).getWidth() + "s ", dateDataTmp);
                 dataSourceListItem.setDate(dataSourceListItem.getDate().substring(dateColumnWidth));
-                reportLineBody.append(COLUMN_SEPARATOR + dateDataTmp);
+                reportPageItemBody.append(COLUMN_SEPARATOR + dateDataTmp);
             } else {
                 dateDataTmp = String.format(" %-" + settings.getColumns().get(1).getWidth() + "s ", dataSourceListItem.getDate());
-                reportLineBody.append(COLUMN_SEPARATOR + dateDataTmp);
+                reportPageItemBody.append(COLUMN_SEPARATOR + dateDataTmp);
                 dataSourceListItem.setDate("");
 
             }
@@ -118,21 +130,21 @@ public class ReportBuilder {
                 fullNameDataTmp = dataSourceListItem.getFullName().substring(0, fullNameColumnWidth);
                 fullNameDataTmp = String.format(" %-" + settings.getColumns().get(2).getWidth() + "s ", fullNameDataTmp);
                 dataSourceListItem.setFullName(dataSourceListItem.getFullName().substring(fullNameColumnWidth));
-                reportLineBody.append(COLUMN_SEPARATOR + fullNameDataTmp + COLUMN_SEPARATOR);
+                reportPageItemBody.append(COLUMN_SEPARATOR + fullNameDataTmp + COLUMN_SEPARATOR);
             } else {
                 fullNameDataTmp = String.format(" %-" + settings.getColumns().get(2).getWidth() + "s ", dataSourceListItem.getFullName());
-                reportLineBody.append(COLUMN_SEPARATOR + fullNameDataTmp + COLUMN_SEPARATOR);
+                reportPageItemBody.append(COLUMN_SEPARATOR + fullNameDataTmp + COLUMN_SEPARATOR);
                 dataSourceListItem.setFullName("");
             }
 
-            reportLineBody.append("\n");
+            reportPageItemBody.append("\n");
         }
 
         dataSourceListItem.setFullName(dataSourceListItem.getFullName().trim());
         if (dataSourceListItem.getNumber().length() != 0 ||
                 dataSourceListItem.getDate().length() != 0 ||
                 dataSourceListItem.getFullName().length() != 0) {
-            reportLineBody.append(COLUMN_SEPARATOR + String.format(" %-" +
+            reportPageItemBody.append(COLUMN_SEPARATOR + String.format(" %-" +
                     settings.getColumns().get(0).getWidth() + "s ", dataSourceListItem.getNumber())
                     + COLUMN_SEPARATOR + String.format(" %-" +
                     settings.getColumns().get(1).getWidth() + "s ", dataSourceListItem.getDate())
