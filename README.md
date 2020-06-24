@@ -4,6 +4,8 @@
 
 #### Запуск
 ###### Запуск генератора отчетов производится через terminal/cmd командой:
+
+##### Собранный jar файл находится в корневом каталоге проекта 
 ```sh
 java -jar reportgenerator.jar settings.xml source-data.tsv example-report.txt
 ```
